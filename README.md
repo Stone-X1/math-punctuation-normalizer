@@ -10,7 +10,7 @@
 
 ### 简介
 
-Math Punctuation Normalizer 是一个使用 Python 标准库实现的命令行工具，用于将中文数学 Markdown 笔记中的部分标点统一为 **B+ 风格**：正文主要使用西文半角句读，并在后面需要接续文字时添加一个空格。工具尽量保留已识别的 LaTeX 公式与 Markdown 结构；默认只生成预览报告，不修改笔记。
+Math Punctuation Normalizer 是一个基于 Python 标准库的命令行工具，用于规范化中文数学 Markdown 笔记中的标点与间距。它将普通正文中的部分中文标点转换为对应的西文半角标点，并根据上下文调整标点后的空格，同时尽量保留已识别的 LaTeX 公式和 Markdown 结构。程序默认只生成预览报告，不直接修改笔记。
 
 它可以处理 Obsidian 知识库中的 Markdown 文件，但**不是 Obsidian 插件**，不需要安装 Obsidian 或连接云端服务。
 
@@ -132,7 +132,7 @@ MIT License。见 [`LICENSE`](LICENSE)。
 
 ### Overview
 
-Math Punctuation Normalizer is a small Python command-line utility for applying a **B+ punctuation style** to Chinese mathematical Markdown notes. It converts selected Chinese sentence punctuation to ASCII punctuation and adds a following space when appropriate, while conservatively preserving recognized LaTeX and Markdown constructs.
+Math Punctuation Normalizer is a lightweight Python command-line utility for normalizing punctuation and spacing in Chinese mathematical Markdown notes. It converts selected Chinese punctuation marks to their ASCII equivalents, adjusts spacing where appropriate, and conservatively preserves recognized LaTeX expressions and Markdown structures.
 
 It operates on local `.md` files and folders. **It is not an Obsidian plugin**, does not require an Obsidian installation, and uses only Python's standard library.
 
