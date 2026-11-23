@@ -39,12 +39,29 @@ def main(argv: list[str] | None = None) -> int:
             manifest = json.loads(z.read("manifest.json"))
             for record in manifest["files"]:
                 relative = record["path"]
-                target = (vault / relative).resolve()
-                if target != vault and vault not in target.parents:
+                if not isinstance(relative, str) or not relative:
+                    skipped.append("备份包含无效文件路径，拒绝恢复")
+                    continue
+
+                relative_path = Path(relative)
+                if relative_path.is_absolute() or ".." in relative_path.parts or "." in relative_path.parts:
+                    skipped.append(f"{relative}：路径越界或包含非法路径段，拒绝恢复")
+                    continue
+
+                # Inspect the original path before resolve(): resolving a symlink
+                # hides the fact that the target or a parent was a symlink.
+                unresolved_target = vault / relative_path
+                if any((vault.joinpath(*relative_path.parts[:i])).is_symlink()
+                       for i in range(1, len(relative_path.parts) + 1)):
+                    skipped.append(f"{relative}：路径包含符号链接，拒绝恢复")
+                    continue
+
+                target = unresolved_target.resolve()
+                if target == vault or vault not in target.parents:
                     skipped.append(f"{relative}：路径越界，拒绝恢复")
                     continue
-                if target.is_symlink() or not target.is_file():
-                    skipped.append(f"{relative}：文件已不存在或是符号链接")
+                if not target.is_file():
+                    skipped.append(f"{relative}：文件已不存在或不是普通文件")
                     continue
                 name = "original/" + relative.replace("\\", "/")
                 old = z.read(name)
