@@ -445,6 +445,13 @@ def transform(text: str) -> Converted:
         if skip_heading_level is not None:
             protect()
             continue
+        # Obsidian heading links include the literal heading text.  Rewriting
+        # punctuation in headings without rewriting inbound links from every
+        # vault would risk breaking #heading targets. Keep all ATX headings
+        # byte-identical; normal prose elsewhere can still be normalized.
+        if heading:
+            protect()
+            continue
 
         # Skip entire lines containing structures that can resemble Markdown or
         # unmarked math (tables, blockquotes, indented code, HTML raw blocks).
@@ -598,9 +605,11 @@ def atomic_write(path: Path, content: bytes) -> None:
             os.unlink(temp_path)
 
 
-def create_backup(root: Path, changes: list[Change]) -> Path:
+def create_backup(root: Path, changes: list[Change], backup_dir: Path | None = None) -> Path:
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
-    backup_path = root.parent / f"{root.stem if root.is_file() else root.name}-punctuation-backup-{stamp}.zip"
+    destination = backup_dir if backup_dir is not None else root.parent
+    destination.mkdir(parents=True, exist_ok=True)
+    backup_path = destination / f"{root.stem if root.is_file() else root.name}-punctuation-backup-{stamp}.zip"
     manifest = {"root": str(root), "created": stamp, "files": []}
     with zipfile.ZipFile(backup_path, "x", zipfile.ZIP_DEFLATED) as bundle:
         for change in changes:
@@ -626,6 +635,7 @@ def main(argv: list[str] | None = None) -> int:
     actions.add_argument("--dry-run", action="store_true", help="只预览，不修改文件（默认）")
     actions.add_argument("--apply", action="store_true", help="创建备份后写入所有安全的变更")
     parser.add_argument("--report", type=Path, help="Markdown 报告的保存位置（默认在知识库旁边）")
+    parser.add_argument("--backup-dir", type=Path, help="--apply 时保存 ZIP 备份的目录；推荐选知识库之外的本地目录")
     parser.add_argument("--max-diffs", type=int, default=15, help="报告展示详细差异的文件数，默认 15")
     args = parser.parse_args(argv)
 
@@ -641,6 +651,9 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("报告应保存在知识库外，避免在扫描/同步时混入知识笔记")
     if root.is_file() and report == root:
         parser.error("报告不能覆盖原始 Markdown 文件")
+    backup_dir = args.backup_dir.expanduser().resolve() if args.backup_dir else None
+    if backup_dir is not None and (backup_dir == root or (root.is_dir() and root in backup_dir.parents)):
+        parser.error("备份目录必须位于目标知识库之外")
 
     print(f"扫描：{root}")
     scanned, protected, changes, skipped = analyze(root)
@@ -648,7 +661,7 @@ def main(argv: list[str] | None = None) -> int:
     backup_str = None
     if args.apply and changes:
         try:
-            backup = create_backup(root, changes)
+            backup = create_backup(root, changes, backup_dir=backup_dir)
         except OSError as exc:
             print(f"无法创建或校验备份，未执行写入：{exc}", file=sys.stderr)
             return 2

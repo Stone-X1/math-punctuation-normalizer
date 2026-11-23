@@ -136,6 +136,17 @@ class ProtectedSyntaxTests(unittest.TestCase):
         s = '> 原题，保持不变。\n普通解释，修改。'
         self.check(s, '> 原题，保持不变。\n普通解释, 修改.')
 
+    def test_preserve_obisidian_heading_anchors(self):
+        s = ('## 第一问：切点处同时读出函数值和斜率\n'
+             '详见[[数学/切线#第一问：切点处同时读出函数值和斜率|对应证明]]，结论成立。\n'
+             '### 单调性：函数递增，保持标题\n'
+             "证明如下：由 $f'(x)>0$ 可得结论。")
+        expected = ('## 第一问：切点处同时读出函数值和斜率\n'
+                    '详见[[数学/切线#第一问：切点处同时读出函数值和斜率|对应证明]], 结论成立.\n'
+                    '### 单调性：函数递增，保持标题\n'
+                    "证明如下: 由 $f'(x)>0$ 可得结论.")
+        self.check(s, expected)
+
     def test_special_headings(self):
         s = '# 内容\n## 原题\n设函数，求导数。\n### 细则\n原文，保持。\n## 分析\n因此，成立。'
         self.check(s, '# 内容\n## 原题\n设函数，求导数。\n### 细则\n原文，保持。\n## 分析\n因此, 成立.')
@@ -169,6 +180,18 @@ class ProtectedSyntaxTests(unittest.TestCase):
 
 
 class IntegrationTests(unittest.TestCase):
+    def test_custom_backup_directory_outside_vault(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            parent = Path(tmp)
+            vault = parent / 'vault'
+            vault.mkdir()
+            (vault / 'a.md').write_text('先，后。', encoding='utf-8')
+            backups = parent / 'independent-backups'
+            self.assertEqual(main([str(vault), '--apply', '--backup-dir', str(backups)]), 0)
+            archives = list(backups.glob('vault-punctuation-backup-*.zip'))
+            self.assertEqual(len(archives), 1)
+            self.assertEqual((vault / 'a.md').read_text(), '先, 后.')
+
     def test_preview_apply_backup_and_excludes(self):
         with tempfile.TemporaryDirectory() as tmp:
             parent = Path(tmp)
